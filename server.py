@@ -30,7 +30,27 @@ AUTO_COMPRESS_IMAGES = os.environ.get('AUTO_COMPRESS_IMAGES', 'true').lower() ==
 MAX_IMAGE_DIMENSION = int(os.environ.get('MAX_IMAGE_DIMENSION', 80000))  # 80000px max par côté
 
 FILE_EXPIRY_HOURS = int(os.environ.get('FILE_EXPIRY_HOURS', 24))
-BASE_URL = os.environ.get('BASE_URL', 'https://pdf-converter-server-production.up.railway.app')
+
+# ✅ DÉTECTION AUTOMATIQUE DE L'URL RAILWAY
+def get_base_url():
+    """Détecte automatiquement l'URL Railway"""
+    # Essayer d'abord la variable d'environnement personnalisée
+    if os.environ.get('BASE_URL'):
+        return os.environ.get('BASE_URL')
+    
+    # Ensuite essayer les variables Railway
+    railway_public_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    if railway_public_domain:
+        return f"https://{railway_public_domain}"
+    
+    railway_static_url = os.environ.get('RAILWAY_STATIC_URL')
+    if railway_static_url:
+        return railway_static_url
+    
+    # Fallback par défaut (ne devrait jamais arriver)
+    return 'http://localhost:8080'
+
+BASE_URL = get_base_url()
 
 # Stockage temporaire en mémoire
 TEMP_STORAGE = {}
@@ -210,6 +230,7 @@ def home():
         "service": "[FILE] Storage API - Stockage GROS FICHIERS avec compression",
         "version": "2.0",
         "status": "[OK] Operationnel",
+        "base_url": BASE_URL,
         "description": "Upload de TRES GROS fichiers avec compression automatique",
         "features": {
             "large_files": f"[OK] Jusqu'a {MAX_FILE_SIZE/(1024*1024)}MB",
@@ -240,7 +261,8 @@ def health():
         "timestamp": datetime.now().isoformat(),
         "storage_count": len(TEMP_STORAGE),
         "max_file_size_mb": MAX_FILE_SIZE / (1024 * 1024),
-        "max_image_size_mb": MAX_IMAGE_SIZE / (1024 * 1024)
+        "max_image_size_mb": MAX_IMAGE_SIZE / (1024 * 1024),
+        "base_url": BASE_URL
     })
 
 @app.route('/upload', methods=['POST'])
@@ -534,6 +556,7 @@ def status():
     return jsonify({
         "status": "operational",
         "version": "2.0",
+        "base_url": BASE_URL,
         "storage": {
             "files_count": len(TEMP_STORAGE),
             "total_size_mb": round(total_size / (1024 * 1024), 2),
